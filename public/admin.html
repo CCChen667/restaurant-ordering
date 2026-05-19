@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商家管理后台</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --primary: #ff6b35; --bg: #f5f5f5; --card: #fff; --text: #333; --text2: #888; --border: #eee; --success: #52c41a; --danger: #ff4d4f; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); }
+    .hide { display: none !important; }
+
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 200px; background: #1a1a2e; color: #fff; padding: 20px 0; flex-shrink: 0; }
+    .sidebar h2 { font-size: 16px; padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; }
+    .nav-item { display: block; padding: 12px 20px; color: rgba(255,255,255,0.7); text-decoration: none; font-size: 14px; cursor: pointer; border: none; background: none; width: 100%; text-align: left; }
+    .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+    .main { flex: 1; padding: 24px; overflow-y: auto; }
+
+    .stats-row { display: flex; gap: 12px; margin-bottom: 20px; }
+    .stat-card { flex: 1; background: var(--card); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .stat-label { font-size: 13px; color: var(--text2); }
+    .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .stat-value.revenue { color: var(--primary); }
+
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .toolbar h2 { font-size: 18px; }
+    .filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+
+    .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+
+    .order-items { margin: 8px 0; }
+    .order-item { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+    .order-remark { font-size: 12px; color: var(--text2); margin-top: 6px; }
+    .order-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+    .order-total { font-weight: 700; color: var(--primary); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+    th { background: #fafafa; font-weight: 600; color: var(--text2); }
+
+    .btn { padding: 6px 14px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; font-weight: 500; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-group { display: flex; gap: 6px; }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+    .badge-pending { background: #fff7e6; color: #fa8c16; }
+    .badge-confirmed { background: #e6f7ff; color: #1890ff; }
+    .badge-cooking { background: #fff0f6; color: #eb2f96; }
+    .badge-ready { background: #f6ffed; color: #52c41a; }
+    .badge-completed { background: #f0f0f0; color: #999; }
+    .badge-cancelled { background: #fff1f0; color: #ff4d4f; }
+
+    .empty { text-align: center; padding: 40px 20px; color: var(--text2); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal { background: #fff; border-radius: 16px; padding: 24px; width: 90%; max-width: 420px; max-height: 80vh; overflow-y: auto; }
+    .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: var(--text2); }
+    .form-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; }
+    .form-select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #fff; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions .btn { flex: 1; padding: 10px; }
+
+    @media (max-width: 768px) {
+      .layout { flex-direction: column; }
+      .sidebar { width: 100%; display: flex; padding: 0; overflow-x: auto; }
+      .sidebar h2 { display: none; }
+      .nav-item { white-space: nowrap; padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const STATUS = {
+      pending: { label: '待确认', cls: 'badge-pending', next: 'confirmed', nextLabel: '确认' },
+      confirmed: { label: '已确认', cls: 'badge-confirmed', next: 'cooking', nextLabel: '开始制作' },
+      cooking: { label: '制作中', cls: 'badge-cooking', next: 'ready', nextLabel: '出餐' },
+      ready: { label: '可出餐', cls: 'badge-ready', next: 'completed', nextLabel: '完成' },
+      completed: { label: '已完成', cls: 'badge-completed' },
+      cancelled: { label: '已取消', cls: 'badge-cancelled' },
+    };
+
+    let tab = 'orders';
+    let orders = [];
+    let categories = [];
+    let dishes = [];
+    let stats = { order_count: 0, revenue: 0 };
+    let orderFilter = '';
+    let refreshTimer = null;
+
+    const api = (url, opts) => fetch(url, opts).then(r => r.json());
+
+    async function loadAll() {
+      [orders, categories, dishes, stats] = await Promise.all([
+        api(orderFilter ? `/api/orders?status=${orderFilter}&limit=100` : '/api/orders?limit=100'),
+        api('/api/categories'),
+        api('/api/dishes'),
+        api('/api/stats/today'),
+      ]);
+      render();
+    }
+
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      if (tab === 'orders') {
+        refreshTimer = setInterval(loadAll, 10000);
+      }
+    }
+
+    function stopAutoRefresh() {
+      if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      app.innerHTML = `
+        <div class="layout">
+          <div class="sidebar">
+            <h2>🏪 商家管理</h2>
+            <button class="nav-item ${tab==='orders'?'active':''}" data-tab="orders">📋 订单管理</button>
+            <button class="nav-item ${tab==='menu'?'active':''}" data-tab="menu">🍜 菜品管理</button>
+            <button class="nav-item ${tab==='cats'?'active':''}" data-tab="cats">📂 分类管理</button>
+            <a class="nav-item" href="/" style="color:rgba(255,255,255,0.7);text-decoration:none">← 返回前台</a>
+          </div>
+          <div class="main" id="main"></div>
+        </div>`;
+      renderMain();
+      bindNavEvents();
+    }
+
+    function renderMain() {
+      const el = document.getElementById('main');
+      if (tab === 'orders') el.innerHTML = renderOrders();
+      else if (tab === 'menu') el.innerHTML = renderMenu();
+      else if (tab === 'cats') el.innerHTML = renderCats();
+      bindMainEvents();
+    }
+
+    function renderOrders() {
+      const filters = Object.entries(STATUS).filter(([k]) => k !== 'completed' && k !== 'cancelled');
+      let html = `
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">今日订单</div><div class="stat-value">${stats.order_count || 0}</div></div>
+          <div class="stat-card"><div class="stat-label">今日营收</div><div class="stat-value revenue">¥${(stats.revenue || 0).toFixed(0)}</div></div>
+        </div>
+        <div class="filter-row">
+          <button class="btn ${!orderFilter ? 'btn-primary' : 'btn-ghost'}" data-filter="">全部</button>
+          ${filters.map(([k, v]) => `<button class="btn ${orderFilter===k?'btn-primary':'btn-ghost'}" data-filter="${k}">${v.label}</button>`).join('')}
+        </div>`;
+
+      if (orders.length === 0) {
+        html += '<div class="empty"><div class="empty-icon">📭</div><p>暂无订单</p></div>';
+        return html;
+      }
+
+      orders.forEach(o => {
+        const s = STATUS[o.status] || {};
+        html += `
+          <div class="card">
+            <div class="card-header">
+              <div><strong>${o.table_no}号桌</strong> <span style="font-size:12px;color:#999;margin-left:8px">${o.id}</span></div>
+              <span class="badge ${s.cls}">${s.label}</span>
+            </div>
+            <div class="order-items">
+              ${(o.items||[]).map(i => `<div class="order-item"><span>${i.dish_name} × ${i.quantity}</span><span>¥${(i.price*i.quantity).toFixed(2)}</span></div>`).join('')}
+            </div>
+            ${o.remark ? `<div class="order-remark">备注：${o.remark}</div>` : ''}
+            <div class="order-footer">
+              <span class="order-total">¥${o.total.toFixed(2)}</span>
+              <div class="btn-group">
+                ${o.status !== 'completed' && o.status !== 'cancelled' ? `
+                  <button class="btn btn-success btn-sm" data-advance="${o.id}" data-status="${o.status}">${s.nextLabel}</button>
+                  <button class="btn btn-danger btn-sm" data-cancel="${o.id}">取消</button>
+                ` : ''}
+              </div>
+            </div>
+          </div>`;
+      });
+      return html;
+    }
+
+    function renderMenu() {
+      let html = `<div class="toolbar"><h2>菜品列表</h2><button class="btn btn-primary" id="add-dish-btn">+ 新增菜品</button></div>
+        <div class="card"><table><thead><tr><th>菜品</th><th>分类</th><th>价格</th><th>状态</th><th>操作</th></tr></thead><tbody>`;
+      dishes.forEach(d => {
+        const catName = categories.find(c => c.id === d.category_id)?.name || '-';
+        html += `<tr>
+          <td style="font-weight:500">${d.name}</td>
+          <td>${catName}</td>
+          <td>¥${d.price}</td>
+          <td><button class="btn btn-sm ${d.available ? 'btn-success' : 'btn-ghost'}" data-toggle="${d.id}">${d.available ? '在售' : '停售'}</button></td>
+          <td class="btn-group">
+            <button class="btn btn-sm btn-ghost" data-edit-dish='${JSON.stringify({id:d.id,category_id:d.category_id,name:d.name,description:d.description,price:d.price,sort_order:d.sort_order})}'>编辑</button>
+            <button class="btn btn-sm btn-danger" data-del-dish="${d.id}">删除</button>
+          </td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    function renderCats() {
+      let html = `<div class="toolbar"><h2>分类管理</h2><button class="btn btn-primary" id="add-cat-btn">+ 新增分类</button></div>
+        <div class="card"><table><thead><tr><th>分类名称</th><th>排序</th><th>菜品数</th><th>操作</th></tr></thead><tbody>`;
+      categories.forEach(c => {
+        const count = dishes.filter(d => d.category_id === c.id).length;
+        html += `<tr>
+          <td style="font-weight:500">${c.name}</td>
+          <td>${c.sort_order}</td>
+          <td>${count}</td>
+          <td class="btn-group">
+            <button class="btn btn-sm btn-ghost" data-edit-cat='${JSON.stringify({id:c.id,name:c.name,sort_order:c.sort_order})}'>编辑</button>
+            <button class="btn btn-sm btn-danger" data-del-cat="${c.id}">删除</button>
+          </td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    function bindNavEvents() {
+      document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tab = btn.dataset.tab;
+          stopAutoRefresh();
+          render();
+          startAutoRefresh();
+        });
+      });
+    }
+
+    function bindMainEvents() {
+      // Order filters
+      document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          orderFilter = btn.dataset.filter;
+          orders = await api(orderFilter ? `/api/orders?status=${orderFilter}&limit=100` : '/api/orders?limit=100');
+          renderMain();
+        });
+      });
+
+      // Advance order status
+      document.querySelectorAll('[data-advance]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.advance;
+          const s = STATUS[btn.dataset.status];
+          if (s?.next) {
+            await api(`/api/orders/${id}/status`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status: s.next }) });
+            await loadAll();
+          }
+        });
+      });
+
+      // Cancel order
+      document.querySelectorAll('[data-cancel]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('确定取消此订单？')) return;
+          await api(`/api/orders/${btn.dataset.cancel}/status`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status: 'cancelled' }) });
+          await loadAll();
+        });
+      });
+
+      // Toggle dish availability
+      document.querySelectorAll('[data-toggle]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const d = dishes.find(x => x.id === btn.dataset.toggle);
+          if (!d) return;
+          const fd = new FormData();
+          fd.append('category_id', d.category_id); fd.append('name', d.name);
+          fd.append('description', d.description || ''); fd.append('price', d.price);
+          fd.append('available', d.available ? 0 : 1); fd.append('sort_order', d.sort_order || 0);
+          await api(`/api/dishes/${d.id}`, { method: 'PUT', body: fd });
+          dishes = await api('/api/dishes');
+          renderMain();
+        });
+      });
+
+      // Edit dish
+      document.querySelectorAll('[data-edit-dish]').forEach(btn => {
+        btn.addEventListener('click', () => showDishModal(JSON.parse(btn.dataset.editDish)));
+      });
+
+      // Delete dish
+      document.querySelectorAll('[data-del-dish]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('确定删除此菜品？')) return;
+          await api(`/api/dishes/${btn.dataset.delDish}`, { method: 'DELETE' });
+          dishes = await api('/api/dishes');
+          renderMain();
+        });
+      });
+
+      // Add dish
+      const addDishBtn = document.getElementById('add-dish-btn');
+      if (addDishBtn) addDishBtn.addEventListener('click', () => showDishModal(null));
+
+      // Edit/Delete category
+      document.querySelectorAll('[data-edit-cat]').forEach(btn => {
+        btn.addEventListener('click', () => showCatModal(JSON.parse(btn.dataset.editCat)));
+      });
+      document.querySelectorAll('[data-del-cat]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('删除分类会同时删除该分类下的所有菜品，确定？')) return;
+          await api(`/api/categories/${btn.dataset.delCat}`, { method: 'DELETE' });
+          await loadAll();
+        });
+      });
+
+      // Add category
+      const addCatBtn = document.getElementById('add-cat-btn');
+      if (addCatBtn) addCatBtn.addEventListener('click', () => showCatModal(null));
+    }
+
+    function showCatModal(cat) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-title">${cat ? '编辑分类' : '新增分类'}</div>
+          <div class="form-group"><label class="form-label">分类名称</label><input class="form-input" id="cat-name" value="${cat?.name || ''}" placeholder="如：招牌推荐"></div>
+          <div class="form-group"><label class="form-label">排序（小的在前）</label><input class="form-input" type="number" id="cat-sort" value="${cat?.sort_order || 0}"></div>
+          <div class="modal-actions"><button class="btn btn-ghost" id="cat-cancel">取消</button><button class="btn btn-primary" id="cat-save">保存</button></div>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      overlay.querySelector('#cat-cancel').onclick = () => overlay.remove();
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      overlay.querySelector('#cat-save').onclick = async () => {
+        const name = overlay.querySelector('#cat-name').value.trim();
+        if (!name) return;
+        const sort_order = parseInt(overlay.querySelector('#cat-sort').value) || 0;
+        if (cat) {
+          await api(`/api/categories/${cat.id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, sort_order }) });
+        } else {
+          await api('/api/categories', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, sort_order }) });
+        }
+        overlay.remove();
+        await loadAll();
+      };
+    }
+
+    function showDishModal(dish) {
+      const catOpts = categories.map(c => `<option value="${c.id}" ${dish?.category_id===c.id?'selected':''}>${c.name}</option>`).join('');
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-title">${dish ? '编辑菜品' : '新增菜品'}</div>
+          <div class="form-group"><label class="form-label">所属分类</label><select class="form-select" id="dish-cat">${catOpts}</select></div>
+          <div class="form-group"><label class="form-label">菜品名称</label><input class="form-input" id="dish-name" value="${dish?.name || ''}" placeholder="如：红烧肉"></div>
+          <div class="form-group"><label class="form-label">描述</label><input class="form-input" id="dish-desc" value="${dish?.description || ''}" placeholder="如：入口即化"></div>
+          <div class="form-group"><label class="form-label">价格（元）</label><input class="form-input" type="number" step="0.01" id="dish-price" value="${dish?.price || ''}" placeholder="0.00"></div>
+          <div class="form-group"><label class="form-label">排序</label><input class="form-input" type="number" id="dish-sort" value="${dish?.sort_order || 0}"></div>
+          <div class="form-group"><label class="form-label">图片（可选）</label><input class="form-input" type="file" accept="image/*" id="dish-img"></div>
+          <div class="modal-actions"><button class="btn btn-ghost" id="dish-cancel">取消</button><button class="btn btn-primary" id="dish-save">保存</button></div>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      overlay.querySelector('#dish-cancel').onclick = () => overlay.remove();
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      overlay.querySelector('#dish-save').onclick = async () => {
+        const name = overlay.querySelector('#dish-name').value.trim();
+        const price = overlay.querySelector('#dish-price').value;
+        if (!name || !price) return;
+        const fd = new FormData();
+        fd.append('category_id', overlay.querySelector('#dish-cat').value);
+        fd.append('name', name);
+        fd.append('description', overlay.querySelector('#dish-desc').value);
+        fd.append('price', price);
+        fd.append('available', dish?.available ?? 1);
+        fd.append('sort_order', overlay.querySelector('#dish-sort').value || 0);
+        const img = overlay.querySelector('#dish-img').files[0];
+        if (img) fd.append('image', img);
+        if (dish) {
+          await api(`/api/dishes/${dish.id}`, { method: 'PUT', body: fd });
+        } else {
+          await api('/api/dishes', { method: 'POST', body: fd });
+        }
+        overlay.remove();
+        dishes = await api('/api/dishes');
+        renderMain();
+      };
+    }
+
+    // Init
+    startAutoRefresh();
+    loadAll();
+  </script>
+</body>
+</html>

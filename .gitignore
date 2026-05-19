@@ -1,0 +1,4 @@
+node_modules/
+server/restaurant.db
+server/uploads/
+.DS_Store

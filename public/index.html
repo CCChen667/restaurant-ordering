@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>扫码点餐</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #ff6b35;
+      --primary-dark: #e55a2b;
+      --bg: #f5f5f5;
+      --card: #fff;
+      --text: #333;
+      --text2: #888;
+      --border: #eee;
+      --success: #52c41a;
+      --danger: #ff4d4f;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    .hide { display: none !important; }
+    #app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: var(--bg); position: relative; padding-bottom: 70px; }
+
+    /* Header */
+    .header { background: var(--primary); color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .table-badge { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 13px; }
+    .admin-link { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; }
+
+    /* Category Tabs */
+    .cat-tabs { display: flex; background: #fff; overflow-x: auto; border-bottom: 1px solid var(--border); position: sticky; top: 54px; z-index: 99; scrollbar-width: none; }
+    .cat-tabs::-webkit-scrollbar { display: none; }
+    .cat-tab { flex-shrink: 0; padding: 12px 20px; font-size: 14px; color: var(--text2); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
+    .cat-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+    /* Dish Section */
+    .dish-section { padding: 12px 16px; }
+    .dish-section-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 10px; padding-left: 8px; border-left: 3px solid var(--primary); }
+
+    .dish-card { background: var(--card); border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .dish-img { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+    .dish-emoji { width: 80px; height: 80px; border-radius: 8px; background: linear-gradient(135deg, #fff3e0, #ffe0b2); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; }
+    .dish-info { flex: 1; min-width: 0; }
+    .dish-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .dish-desc { font-size: 12px; color: var(--text2); margin-bottom: 8px; line-height: 1.4; }
+    .dish-bottom { display: flex; justify-content: space-between; align-items: center; }
+    .dish-price { color: var(--primary); font-size: 16px; font-weight: 700; }
+    .dish-price::before { content: '¥'; font-size: 12px; }
+
+    /* Qty controls */
+    .qty-ctrl { display: flex; align-items: center; gap: 8px; }
+    .qty-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--primary); background: #fff; color: var(--primary); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .qty-btn:active { background: var(--primary); color: #fff; }
+    .qty-btn.minus { border-color: #ddd; color: #999; }
+    .qty-num { font-size: 14px; font-weight: 600; min-width: 20px; text-align: center; }
+    .add-btn { width: 28px; height: 28px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .add-btn:active { transform: scale(0.9); }
+
+    /* Cart Bar */
+    .cart-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); max-width: 480px; width: 100%; background: #2d2d2d; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 200; cursor: pointer; }
+    .cart-bar-left { display: flex; align-items: center; gap: 8px; }
+    .cart-icon { font-size: 24px; }
+    .cart-count { background: var(--primary); color: #fff; font-size: 11px; min-width: 18px; height: 18px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .cart-total { color: #fff; font-size: 18px; font-weight: 700; }
+    .cart-bar-btn { background: var(--primary); color: #fff; border: none; padding: 10px 24px; border-radius: 24px; font-size: 14px; font-weight: 600; cursor: pointer; }
+
+    /* Cart Page */
+    .cart-page { padding: 16px; }
+    .cart-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .back-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; }
+    .cart-item { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .cart-item-name { font-size: 14px; font-weight: 600; }
+    .cart-item-price { font-size: 13px; color: var(--text2); margin-top: 2px; }
+    .remark-input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; resize: none; margin: 16px 0; font-family: inherit; }
+    .cart-summary { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; display: flex; justify-content: space-between; font-size: 16px; font-weight: 600; }
+    .cart-summary-price { color: var(--primary); font-size: 20px; }
+    .submit-btn { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .submit-btn:active { background: var(--primary-dark); }
+    .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Order Success */
+    .success-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 20px; text-align: center; }
+    .success-icon { font-size: 64px; margin-bottom: 16px; }
+    .success-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .success-sub { color: var(--text2); font-size: 14px; margin-bottom: 24px; }
+    .success-order { font-size: 13px; color: var(--text2); background: #f0f0f0; padding: 8px 16px; border-radius: 8px; margin-bottom: 24px; }
+    .success-back { color: var(--primary); text-decoration: none; font-size: 14px; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 40px 20px; color: var(--text2); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+    /* Bump animation */
+    @keyframes bump { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+    .bump { animation: bump 0.3s ease; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    const EMOJIS = ['🍜','🍲','🥘','🍛','🥗','🥟','🍖','🥩','🍗','🥦','🍚','🥤','🍳','🫕','🍝'];
+
+    // State
+    let menuData = [];
+    let cart = [];
+    let currentCat = '';
+    let view = 'menu'; // menu | cart | success
+    let lastOrderId = '';
+    let tableNo = new URLSearchParams(location.search).get('table') || '1';
+
+    // Fetch
+    const api = (url, opts) => fetch(url, opts).then(r => r.json());
+
+    // Init
+    async function init() {
+      menuData = await api('/api/dishes/by-category');
+      if (menuData.length > 0) currentCat = menuData[0].id;
+      render();
+    }
+
+    function getQty(dishId) {
+      const item = cart.find(i => i.dish_id === dishId);
+      return item ? item.quantity : 0;
+    }
+
+    function addToCart(dish) {
+      const existing = cart.find(i => i.dish_id === dish.id);
+      if (existing) {
+        existing.quantity++;
+      } else {
+        cart.push({ dish_id: dish.id, dish_name: dish.name, price: dish.price, quantity: 1 });
+      }
+      render();
+    }
+
+    function removeFromCart(dishId) {
+      const idx = cart.findIndex(i => i.dish_id === dishId);
+      if (idx === -1) return;
+      if (cart[idx].quantity > 1) {
+        cart[idx].quantity--;
+      } else {
+        cart.splice(idx, 1);
+      }
+      render();
+    }
+
+    function totalItems() { return cart.reduce((s, i) => s + i.quantity, 0); }
+    function totalPrice() { return cart.reduce((s, i) => s + i.price * i.quantity, 0); }
+
+    function render() {
+      const app = document.getElementById('app');
+      if (view === 'cart') {
+        app.innerHTML = renderCartPage();
+      } else if (view === 'success') {
+        app.innerHTML = renderSuccessPage();
+      } else {
+        app.innerHTML = renderMenuPage();
+      }
+      bindEvents();
+    }
+
+    function renderMenuPage() {
+      let html = `
+        <div class="header">
+          <h1>🍽️ 扫码点餐</h1>
+          <div>
+            <a href="/admin" class="admin-link" style="margin-right:12px">商家</a>
+            <span class="table-badge">${tableNo}号桌</span>
+          </div>
+        </div>
+        <div class="cat-tabs">
+          ${menuData.map(cat => `
+            <button class="cat-tab ${currentCat === cat.id ? 'active' : ''}" data-cat-id="${cat.id}">${cat.name}</button>
+          `).join('')}
+        </div>
+      `;
+
+      menuData.forEach((cat, ci) => {
+        html += `<div class="dish-section" id="sec-${cat.id}" data-cat-id="${cat.id}">
+          <div class="dish-section-title">${cat.name}</div>`;
+        cat.dishes.forEach((dish, di) => {
+          const qty = getQty(dish.id);
+          html += `
+            <div class="dish-card">
+              ${dish.image
+                ? `<img src="${dish.image}" class="dish-img" alt="${dish.name}">`
+                : `<div class="dish-emoji">${EMOJIS[(ci * 3 + di) % EMOJIS.length]}</div>`
+              }
+              <div class="dish-info">
+                <div class="dish-name">${dish.name}</div>
+                <div class="dish-desc">${dish.description || ''}</div>
+                <div class="dish-bottom">
+                  <div class="dish-price">${dish.price}</div>
+                  ${qty === 0
+                    ? `<button class="add-btn" data-add='${JSON.stringify({id:dish.id,name:dish.name,price:dish.price})}'>+</button>`
+                    : `<div class="qty-ctrl">
+                        <button class="qty-btn minus" data-minus="${dish.id}">−</button>
+                        <span class="qty-num">${qty}</span>
+                        <button class="qty-btn" data-add='${JSON.stringify({id:dish.id,name:dish.name,price:dish.price})}'>+</button>
+                      </div>`
+                  }
+                </div>
+              </div>
+            </div>`;
+        });
+        html += '</div>';
+      });
+
+      // Cart bar
+      if (cart.length > 0) {
+        html += `
+          <div class="cart-bar" id="cart-bar">
+            <div class="cart-bar-left">
+              <span class="cart-icon">🛒</span>
+              <span class="cart-count">${totalItems()}</span>
+              <span class="cart-total">¥${totalPrice().toFixed(2)}</span>
+            </div>
+            <button class="cart-bar-btn">去结算</button>
+          </div>`;
+      }
+
+      return html;
+    }
+
+    function renderCartPage() {
+      if (cart.length === 0) {
+        return `
+          <div class="cart-page">
+            <div class="cart-header"><button class="back-btn" id="back-btn">←</button><h2>购物车</h2></div>
+            <div class="empty"><div class="empty-icon">🛒</div><p>购物车空空如也</p></div>
+          </div>`;
+      }
+
+      let items = cart.map(item => `
+        <div class="cart-item">
+          <div><div class="cart-item-name">${item.dish_name}</div><div class="cart-item-price">¥${item.price} × ${item.quantity}</div></div>
+          <div class="qty-ctrl">
+            <button class="qty-btn minus" data-minus="${item.dish_id}">−</button>
+            <span class="qty-num">${item.quantity}</span>
+            <button class="qty-btn" data-add-cart='${JSON.stringify({id:item.dish_id,name:item.dish_name,price:item.price})}'>+</button>
+          </div>
+        </div>
+      `).join('');
+
+      return `
+        <div class="cart-page">
+          <div class="cart-header"><button class="back-btn" id="back-btn">←</button><h2>已选菜品 (${totalItems()})</h2></div>
+          ${items}
+          <textarea class="remark-input" id="remark-input" placeholder="备注（如：少辣、不要香菜等）" rows="2"></textarea>
+          <div class="cart-summary"><span>合计</span><span class="cart-summary-price">¥${totalPrice().toFixed(2)}</span></div>
+          <button class="submit-btn" id="submit-btn">提交订单 ¥${totalPrice().toFixed(2)}</button>
+        </div>`;
+    }
+
+    function renderSuccessPage() {
+      return `
+        <div class="success-page">
+          <div class="success-icon">✅</div>
+          <div class="success-title">下单成功！</div>
+          <div class="success-sub">后厨已收到您的订单，请稍候</div>
+          <div class="success-order">订单号：${lastOrderId}</div>
+          <a href="?table=${tableNo}" class="success-back">← 返回继续点餐</a>
+        </div>`;
+    }
+
+    function bindEvents() {
+      // Category tabs
+      document.querySelectorAll('.cat-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentCat = btn.dataset.catId;
+          document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+          btn.classList.add('active');
+          const sec = document.getElementById('sec-' + currentCat);
+          if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+
+      // Add buttons
+      document.querySelectorAll('[data-add]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dish = JSON.parse(btn.dataset.add);
+          addToCart(dish);
+        });
+      });
+
+      // Add from cart page
+      document.querySelectorAll('[data-add-cart]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const dish = JSON.parse(btn.dataset.addCart);
+          addToCart(dish);
+        });
+      });
+
+      // Minus buttons
+      document.querySelectorAll('[data-minus]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          removeFromCart(btn.dataset.minus);
+        });
+      });
+
+      // Cart bar
+      const cartBar = document.getElementById('cart-bar');
+      if (cartBar) {
+        cartBar.addEventListener('click', () => { view = 'cart'; render(); });
+      }
+
+      // Back button
+      const backBtn = document.getElementById('back-btn');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => { view = 'menu'; render(); });
+      }
+
+      // Submit order
+      const submitBtn = document.getElementById('submit-btn');
+      if (submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+          submitBtn.disabled = true;
+          submitBtn.textContent = '提交中...';
+          try {
+            const remark = document.getElementById('remark-input')?.value || '';
+            const res = await api('/api/orders', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ table_no: tableNo, items: cart, remark })
+            });
+            if (res.id) {
+              lastOrderId = res.id;
+              cart = [];
+              view = 'success';
+              render();
+            } else {
+              alert('下单失败：' + (res.error || '未知错误'));
+              submitBtn.disabled = false;
+              submitBtn.textContent = `提交订单 ¥${totalPrice().toFixed(2)}`;
+            }
+          } catch(e) {
+            alert('网络错误，请重试');
+            submitBtn.disabled = false;
+            submitBtn.textContent = `提交订单 ¥${totalPrice().toFixed(2)}`;
+          }
+        });
+      }
+
+      // Intersection observer for category tabs
+      if (view === 'menu' && menuData.length > 0) {
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const catId = entry.target.dataset.catId;
+              if (catId && catId !== currentCat) {
+                currentCat = catId;
+                document.querySelectorAll('.cat-tab').forEach(t => {
+                  t.classList.toggle('active', t.dataset.catId === catId);
+                });
+              }
+            }
+          });
+        }, { rootMargin: '-120px 0px -60% 0px' });
+
+        document.querySelectorAll('.dish-section').forEach(el => observer.observe(el));
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
